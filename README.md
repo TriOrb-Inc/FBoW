@@ -20,3 +20,18 @@ $ make
 
 This software is distributed under MIT License.  
 See the [LICENSE](./LICENSE).
+
+　　
+## 追記
+### 変更点
+cuda-efficient-featuresを使用してBADとHASH_SIFT特徴量を作成  
+### 実行手順
+①使用するファイルを一つのディレクトリに保存  
+②cd FBow/build/utils  
+③./fbow_dump_features bad256 save_file /picture_dir  
+&emsp;※./fbow_dump_features 使用特徴量 保存ファイル名 使用する画像のディレクトリ  
+④./fbow_create_vocabulary save_file vocablary.fbow  
+&emsp;※./fbow_create_vocabulary ③で作成したファイル 生成する辞書ファイル名  
+  
+### 未実装
+複数のディレクトリからファイルを取得

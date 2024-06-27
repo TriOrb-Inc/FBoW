@@ -85,7 +85,7 @@ option(INSTALL_FBOW_DEV "Set to OFF to disable source installation" ON)
 #   find dependencies
 # ------------------------------------------------------
 
-find_package(OpenCV 3.0 REQUIRED)
+find_package(OpenCV 4.9 REQUIRED) #変更
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 if(USE_CONTRIB)
@@ -93,6 +93,9 @@ if(USE_CONTRIB)
 endif()
 
 set(REQUIRED_LIBRARIES "${OpenCV_LIBS}")
+
+find_package(cuda_efficient_features REQUIRED) # 追記
+include_directories("/usr/local/include") # 追記
 
 # ------------------------------------------------------
 #   PROJECT CONFIGURATION
