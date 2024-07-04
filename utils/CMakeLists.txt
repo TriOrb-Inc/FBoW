@@ -28,8 +28,8 @@ add_executable(fbow_dump_features fbow_dump_features.cpp)
 add_executable(fbow_create_vocabulary fbow_create_vocabulary.cpp)
 add_executable(fbow_transform fbow_transform.cpp)
 
-target_link_libraries(fbow_dump_features ${OpenCV_LIBS})
-target_link_libraries(fbow_create_vocabulary ${OpenCV_LIBS} fbow_lib)
+target_link_libraries(fbow_dump_features ${OpenCV_LIBS} cuda_efficient_features)
+target_link_libraries(fbow_create_vocabulary ${OpenCV_LIBS} fbow_lib cuda_efficient_features)
 target_link_libraries(fbow_transform ${OpenCV_LIBS} fbow_lib)
 
 install(TARGETS fbow_dump_features fbow_create_vocabulary fbow_transform RUNTIME DESTINATION bin)

@@ -261,7 +261,6 @@ set(CMAKE_EXE_LINKER_FLAGS_DEBUG ${CMAKE_EXE_LINKER_FLAGS_DEBUG} ${EXTRA_EXE_LIN
 # ------------------------------------------------------
 #   utility directories
 # ------------------------------------------------------
-
 add_subdirectory(src)
 
 if(BUILD_UTILS)
