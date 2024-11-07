@@ -1,10 +1,12 @@
 #!/bin/bash
-FEAT_TYPE=${1:-'bad256'}
+#MEMO : while true; do  sh generate.sh hash_sift512 /home/tobeta/FBoW/dataset/ /home/tobeta/FBoW/dst/; done
+FEAT_TYPE=${1:-'bad256'} # bad256 bad512 hash_sift256 hash_sift512
 SRC_DIR=${2:-'/triorb/data/log'}
 DST_DIR=${3:-"/triorb/data/"}
 
 docker run -it --rm --name fbow --privileged --net=host --runtime=nvidia --gpus all \
                --add-host=localhost:127.0.1.1 \
+               -m 8g\
                -e ROS_LOCALHOST_ONLY=1 \
                -e FEAT_TYPE="${FEAT_TYPE}"\
                -e SRC_DIR="${SRC_DIR}"\
@@ -19,6 +21,9 @@ docker run -it --rm --name fbow --privileged --net=host --runtime=nvidia --gpus 
                cmake .. &&
                make -j4 &&
                make install &&
+               export CPATH=/usr/local/cuda/targets/x86_64-linux/include:$CPATH &&
+               export LD_LIBRARY_PATH=/usr/local/cuda/targets/x86_64-linux/lib:$LD_LIBRARY_PATH &&
+               export PATH=/usr/local/cuda/bin:$PATH &&
                export cuda_efficient_features_DIR='/usr/local/lib/cmake/cuda_efficient_features/' &&
                export PATH=/usr/local/include/:${PATH} &&
                export CPATH=/usr/local/bin/:${CPATH} &&

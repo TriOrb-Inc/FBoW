@@ -23,13 +23,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 */
-
 #include "cmd_line_parser.h"
 #include "dir_reader.h"
 
 #include <iostream> //汎用入出力
 #include <fstream>  //ファイル入出力
 #include <cstdio>
+#include <fstream>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -46,7 +46,7 @@ THE SOFTWARE.
 #include <cuda_efficient_features/cuda_efficient_descriptors.h>
 #include <cuda_efficient_features/cuda_efficient_features.h>
 
-std::vector<cv::Mat> loadFeatures(const std::vector<std::string> &path_to_images, const std::string &descriptor = "orb")
+std::vector<cv::Mat> loadFeatures(const std::vector<std::string> &path_to_images, const std::string &descriptor = "orb", const std::string output = "./output")
 {
     cv::Ptr<cv::Feature2D> feat_detector = nullptr; // 使用する特徴の変数
 
@@ -92,7 +92,23 @@ std::vector<cv::Mat> loadFeatures(const std::vector<std::string> &path_to_images
     int imageCounter = 0;
     for (const auto &path_to_image : path_to_images)
     { // 特徴抽出
-        std::cout << "reading image: " << path_to_image << std::endl;
+        // pathからファイル名のみ抽出
+        std::string filename = path_to_image.substr(path_to_image.find_last_of("/\\") + 1);
+        // xmlファイル作成
+        std::string xml_filename = output + "_xml/" + filename + ".xml";
+        // xmlファイルが存在する場合はcv::FileStorageで読み込む
+        std::ifstream ifs(xml_filename);
+        if (ifs.is_open())
+        {
+            cv::FileStorage fs2(xml_filename, cv::FileStorage::READ);
+            //std::cout << "reading xml: " << xml_filename << std::endl;
+            fs2["descriptors"] >> descriptors;
+            features.push_back(descriptors);
+            fs2.release();
+            continue;
+        }
+
+        std::cout << "reading image: " << filename << std::endl;
         image = cv::imread(path_to_image, 0); // データをグレースケールで読み込み
         try
         {
@@ -133,11 +149,16 @@ std::vector<cv::Mat> loadFeatures(const std::vector<std::string> &path_to_images
 
             features.push_back(descriptors); // 特徴量の内容をfeaturesに追記
             // std::cout << "done detecting features" << std::endl;
+            
+            //書き込みでXMLファイルを開く
+            cv::FileStorage fs(xml_filename, cv::FileStorage::WRITE);
+            //特徴量の書き込み
+            fs << "descriptors" << descriptors;
+            fs.release();
         }
         catch (std::exception &ex)
         {
             std::cerr << imageCounter << " " << ex.what() << std::endl;
-            exit(1);
             continue;
         }
     }
@@ -216,7 +237,7 @@ std::vector<std::string> findPngFilesRecursively(const std::string &directory)
                     pngFiles.insert(pngFiles.end(), subdirFiles.begin(), subdirFiles.end());
                 }
             }
-            else if (fileName.size() > 4 && fileName.substr(fileName.size() - 4) == ".png")
+            else if (fileName.size() > 4 && (fileName.substr(fileName.size() - 4) == ".png" || fileName.substr(fileName.size() - 4) == ".jpg"))
             {
                 pngFiles.push_back(directory + "\\" + fileName);
             }
@@ -243,7 +264,7 @@ std::vector<std::string> findPngFilesRecursively(const std::string &directory)
                         auto subdirFiles = findPngFilesRecursively(fullPath);
                         pngFiles.insert(pngFiles.end(), subdirFiles.begin(), subdirFiles.end());
                     }
-                    else if (fileName.size() > 4 && fileName.substr(fileName.size() - 4) == ".png")
+                    else if (fileName.size() > 4 && (fileName.substr(fileName.size() - 4) == ".png" || fileName.substr(fileName.size() - 4) == ".jpg"))
                     {
                         pngFiles.push_back(fullPath);
                     }
@@ -288,7 +309,7 @@ int main(int argc, char **argv)
 
         std::vector<std::string> images = findPngFilesRecursively(targetDirectory); // 画像データのディレクトリからpngファイルを探す
         std::shuffle(images.begin(), images.end(), gen);                            // imagesをシャッフル
-        std::vector<cv::Mat> features = loadFeatures(images, descriptor);           // 特徴量を検出
+        std::vector<cv::Mat> features = loadFeatures(images, descriptor, output);   // 特徴量を検出
 
         std::cout << "saving the features: " << output << std::endl;
 
