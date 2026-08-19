@@ -56,6 +56,15 @@ public:
         uint32_t nthreads=1;
         int maxIters=11;
         bool verbose=false;
+        // leaf weight へ idf (inverse document frequency) を書き込むか。
+        // false では従来どおり weight=1 のままで、BoW は語の出現回数ヒストグラムになる。
+        //
+        // 既定は false。upstream FBoW には idf の計算自体が無く、既存 vocabulary の多くが
+        // weight=1 のままだった。欠落は事実だが、同じ木構造で weight だけ変えた対照を作って
+        // 実地図 3 本の place retrieval を比べたところ、1 位が最近傍 keyframe と一致する率は
+        // 3 本とも idf 無しが上回った (63.4/89.0/65.0% 対 59.9/87.3/62.8%)。score の広がりも
+        // idf 有りの方が狭く、閾値判定には不利だった。測定が支持しないので既定を有効にしない。
+        bool useIdf=false;
     };
 
     //create this from a set of features
@@ -272,6 +281,8 @@ private:
 
     //------------
     void convertIntoVoc(Vocabulary &Voc, std::string dec_name);
+    // 学習画像集合から idf を求め、Vocabulary の leaf weight へ書き戻す。
+    void applyIdfWeights(fbow::Vocabulary &Voc,const std::vector<cv::Mat> &features);
 
 
     /**

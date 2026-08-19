@@ -25,6 +25,7 @@ THE SOFTWARE.
 */
 
 #include "vocabulary_creator.h"
+#include <cmath>
 #ifdef USE_OPENMP
 #include <omp.h>
 #else
@@ -95,6 +96,66 @@ void VocabularyCreator::create(fbow::Vocabulary &Voc, const std::vector<cv::Mat>
 
     //now, transform the tree into a vocabulary
     convertIntoVoc(Voc,desc_name);
+
+    //木を作っただけでは leaf weight は Node の初期値 1 のままで、BoW は語の出現回数
+    //ヒストグラムにしかならない。どこにでも出る語と稀な語が同じ重みになるため、
+    //同じ建屋の画像同士では score が高止まりして順位がつかない。
+    //学習画像集合から idf を求めて weight へ書き戻す。
+    if (_params.useIdf) applyIdfWeights(Voc,features);
+}
+
+/**
+ * 学習画像集合から inverse document frequency を求め、leaf weight へ書き戻す。
+ *
+ * 引数:
+ *   Voc      - convertIntoVoc 済みの Vocabulary。weight は全 leaf で 1。
+ *   features - 学習に使った画像ごとの descriptor 行列。1 要素 = 1 画像。
+ *
+ * 戻り値: なし。Voc の leaf weight を書き換える。
+ *
+ * weight は DBoW2 と同じ自然対数の idf `log(N / df)` とする。N は画像数、df は
+ * その語が出現した画像数。df=0 の語は識別に使えないので weight=0 にする
+ * (transform 側は weight を加算するだけなので、0 の語は BoW へ寄与しなくなる)。
+ *
+ * 入力例: 16000 枚の画像、ある語が 8 枚に出現。出力例: その語の weight = log(2000) = 7.6。
+ */
+void VocabularyCreator::applyIdfWeights(fbow::Vocabulary &Voc,const std::vector<cv::Mat> &features){
+    if (features.empty()) return;
+
+    //各画像を BoW へ変換し、語ごとに「出現した画像数」を数える。
+    //この時点の weight は 1 なので transform は語の出現回数を返すが、
+    //ここで必要なのは key (語 id) だけである。
+    std::map<uint32_t,uint32_t> document_frequency;
+    size_t document_count=0;
+    for(const auto &image_features:features){
+        if (image_features.rows==0) continue;
+        document_count++;
+        fbow::BoWVector bow=Voc.transform(image_features);
+        for(const auto &word:bow) document_frequency[word.first]++;
+    }
+    if (document_count==0) return;
+
+    //全 block を走査し、leaf の weight を idf で置き換える。
+    const double total_documents=static_cast<double>(document_count);
+    size_t weighted_leaves=0;
+    for(uint32_t block_index=0;block_index<Voc.size();block_index++){
+        auto block=Voc.getBlock(block_index);
+        const uint16_t node_count=block.getN();
+        for(uint16_t child_index=0;child_index<node_count;child_index++){
+            auto *node_info=block.getBlockNodeInfo(child_index);
+            if (!node_info->isleaf()) continue;
+            const uint32_t word_id=node_info->getId();
+            const auto found=document_frequency.find(word_id);
+            const double frequency=(found==document_frequency.end())?0.0:static_cast<double>(found->second);
+            const float weight=(frequency>0.0)?static_cast<float>(std::log(total_documents/frequency)):0.0f;
+            node_info->setLeaf(word_id,weight);
+            weighted_leaves++;
+        }
+    }
+    if (_params.verbose)
+        std::cout<<"applied idf weights: documents="<<document_count
+                 <<" words_seen="<<document_frequency.size()
+                 <<" leaves="<<weighted_leaves<<std::endl;
 }
 
 void VocabularyCreator::thread_consumer(int idx){

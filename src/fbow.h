@@ -32,7 +32,9 @@ THE SOFTWARE.
 #include <map>
 #include <memory>
 #include <bitset>
-#ifndef __ANDROID__
+// aarch64 では immintrin.h が存在しない。x86 系でだけ取り込む
+// (vendored 版 slam-core/3rd/fbow と同じ判定条件)。
+#if !defined(__ANDROID__) && !defined(__arm64__) && !defined(__arm__) && !defined(__aarch64__)
 #include <immintrin.h>
 #endif
 #include "cpu.h"
@@ -261,7 +263,7 @@ private:
             return d;
         }
     };
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__arm64__) || defined(__arm__) || defined(__aarch64__)
     //fake elements to allow compilation
     struct L2_avx_generic:public Lx<uint64_t,float,32>{inline float computeDist(uint64_t *ptr){return std::numeric_limits<float>::max();}};
     struct L2_se3_generic:public Lx<uint64_t,float,32>{inline float computeDist(uint64_t *ptr){return std::numeric_limits<float>::max();}};
